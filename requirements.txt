@@ -13,13 +13,25 @@ qwen-vl-utils>=0.0.14
 
 # Vector database
 faiss-cpu>=1.7.4
-# For GPU: use faiss-gpu instead of faiss-cpu
+# For GPU: pip install faiss-gpu instead
 
-# Video/Audio processing (optional but recommended)
+# Video/Audio processing
 moviepy>=1.0.3
 librosa>=0.10.0
 soundfile>=0.12.1
 SpeechRecognition>=3.10.0
 
-# Optional: for better performance
-# flash-attn  # Uncomment if you have CUDA and can compile from source
+# Additional dependencies
+blinker>=1.7.0
+typing-extensions>=4.8.0
+python-dotenv>=1.0.0
+
+# Development dependencies (optional)
+# pytest>=7.4.0
+# pytest-cov>=4.1.0
+# black>=23.0.0
+# flake8>=6.0.0
+# isort>=5.12.0
+
+# Optional: Better performance
+# flash-attn  # Requires CUDA and compilation

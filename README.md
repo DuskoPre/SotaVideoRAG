@@ -1,7 +1,8 @@
-# SotaVideoRAG
-A complete, state-of-the-art VideoRAG implementation!
-##
-# 🎥 SotaVideoRAG: Multi-Modal Video Retrieval with FAISS
+# 🎥 SotaVideoRAG: State-of-the-Art Video Retrieval System
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![CUDA](https://img.shields.io/badge/CUDA-11.0+-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 
 Advanced video understanding and retrieval system using Qwen3-VL models, FAISS indexing, and multi-modal search.
 
@@ -13,171 +14,121 @@ Advanced video understanding and retrieval system using Qwen3-VL models, FAISS i
 - 🖼️ **Image Search**: Upload images to find visually similar frames
 - 🎯 **Multi-Modal Reranking**: Advanced relevance scoring with vision-language models
 - 🤖 **AI-Powered Answers**: Context-aware response generation using Qwen3-VL
+- 📦 **Docker Support**: Easy deployment with Docker Compose
+- 🔧 **Configurable**: Environment variables for easy customization
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│              Video Input (MP4, AVI, etc.)        │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│     Scene Detection & Keyframe Extraction        │
-│  • Histogram-based scene boundaries              │
-│  • Uniform keyframe sampling                     │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│        Multi-Modal Encoding (Qwen3-VL)          │
-│  • Caption generation (Ollama)                   │
-│  • Visual embeddings (Qwen3-VL-Embedding)        │
-│  • Text embeddings (Qwen3-VL-Embedding)          │
-│  • Audio transcription (optional)                │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│           FAISS Indexing & Storage               │
-│  • 2048-dim normalized vectors                   │
-│  • IndexFlatIP (exact cosine similarity)         │
-│  • Persistent disk storage                       │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│              Query Processing                    │
-│  • Text queries → embedding                      │
-│  • Image queries → embedding                     │
-│  • FAISS similarity search (<10ms)               │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│      Multi-Modal Reranking (Optional)           │
-│  • Qwen3-VL-Reranker scores image+text pairs    │
-│  • Combines retrieval + reranking scores         │
-└──────────────────┬──────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────┐
-│           Answer Generation                      │
-│  • Context assembly from top results            │
-│  • Qwen3-VL generates final answer              │
-└─────────────────────────────────────────────────┘
+Video Input → Scene Detection → Keyframe Extraction
+     ↓
+Multi-Modal Encoding (Qwen3-VL)
+     ↓
+FAISS Indexing & Storage (Persistent)
+     ↓
+Query Processing (Text/Image)
+     ↓
+FAISS Similarity Search (<10ms)
+     ↓
+Multi-Modal Reranking (Optional)
+     ↓
+Answer Generation (Qwen3-VL via Ollama)
 ```
 
 ## 📦 Installation
 
-### Prerequisites
-
-- Python 3.8+
-- CUDA-capable GPU (8GB+ VRAM recommended)
-- 20GB+ free disk space
-
-### Step 1: Clone and Setup
+### Quick Start (Recommended)
 
 ```bash
-git clone <your-repo>
-cd videorag
-mkdir scripts
-touch scripts/__init__.py
-```
+# Clone repository
+git clone <your-repo-url>
+cd SotaVideoRAG
 
-### Step 2: Install Dependencies
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-```bash
+# Install dependencies
 pip install -r requirements.txt
 
-# For GPU-accelerated FAISS (optional but recommended):
-pip uninstall faiss-cpu
+# Install FAISS (GPU version recommended)
 pip install faiss-gpu
-```
+# Or CPU version: pip install faiss-cpu
 
-### Step 3: Install Ollama
-
-```bash
-# Install Ollama
+# Install and start Ollama
 curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull Qwen3-VL model
 ollama pull qwen3-vl
+ollama serve  # Keep running in separate terminal
 
-# Start Ollama server (keep this running)
-ollama serve
-```
-
-### Step 4: Download Model Scripts
-
-Place these files in the `scripts/` directory:
-- `qwen3_vl_embedding.py`
-- `qwen3_vl_reranker.py`
-- `__init__.py` (empty file)
-
-## 🚀 Quick Start
-
-### Start the Application
-
-```bash
+# Run application
 python videorag_app.py
 ```
 
-Open your browser to `http://localhost:7860`
+Visit `http://localhost:7860` in your browser.
 
-### Basic Usage
+### Docker Deployment
 
-1. **Settings Tab**:
-   - Click "Initialize Models" (first time only)
-   - Wait for models to load
+```bash
+# Build and start services
+docker-compose up -d
 
-2. **Process Video Tab**:
-   - Upload your video
-   - Adjust FPS (1.0 recommended)
-   - Click "Process Video"
-   - Index is saved automatically
+# View logs
+docker-compose logs -f videorag
 
-3. **Text Search Tab**:
-   - Ask questions: "What activities are shown?"
-   - Get AI-generated answers with relevant frames
+# Stop services
+docker-compose down
+```
 
-4. **Image Search Tab**:
-   - Upload a reference image
-   - Find visually similar frames in the video
+## 🚀 Usage
 
-## 📖 Usage Examples
+### 1. Initialize Models
 
-### Example 1: Text Search
+Go to the **Settings** tab and click "Initialize Models". This loads:
+- Qwen3-VL-Embedding-2B (or 8B for better quality)
+- Qwen3-VL-Reranker-2B (or 8B for better quality)
 
-```python
-# In the Text Search tab:
+### 2. Process Video
+
+**Process Video** tab:
+- Upload your video file
+- Set FPS (1.0 recommended for balance)
+- Enable "Use Cache" to load cached indexes
+- Click "Process Video"
+
+### 3. Search
+
+**Text Search** tab:
+- Enter natural language query
+- Select number of results (Top K)
+- Enable/disable reranking
+- Get AI-generated answer + relevant frames
+
+**Image Search** tab:
+- Upload a reference image
+- Find visually similar frames in the video
+
+## 💡 Examples
+
+### Text Search
+```
 Query: "Show me scenes with people talking"
-Top K: 5
-Use reranking: ✓
-
-# Results: Relevant frames + AI answer
+Results: Relevant frames + AI answer explaining the conversation context
 ```
 
-### Example 2: Image Search
-
-```python
-# In the Image Search tab:
-1. Upload image of a dog
-2. Click "Find Similar Frames"
-3. Get all frames with similar dogs
+### Image Search
+```
+Upload: Image of a dog
+Results: All frames in the video containing similar dogs
 ```
 
-### Example 3: Programmatic Usage
+### Programmatic Usage
 
 ```python
 from videorag_app import VideoRAG
 from PIL import Image
 
 # Initialize
-rag = VideoRAG(
-    embedding_model_path="Qwen/Qwen3-VL-Embedding-2B",
-    reranker_model_path="Qwen/Qwen3-VL-Reranker-2B"
-)
+rag = VideoRAG()
 
 # Process video (once)
 rag.process_video("my_video.mp4", fps=1.0)
@@ -189,132 +140,63 @@ results = rag.search_with_text("Find outdoor scenes", top_k=5)
 query_image = Image.open("reference.jpg")
 results = rag.search_with_image(query_image, top_k=5)
 
-# Rerank
+# Rerank and generate answer
 reranked = rag.rerank_results("outdoor scenes", results)
-
-# Generate answer
 answer = rag.generate_answer("What's happening?", reranked)
 ```
 
-## 🎯 Models Used
+## 🎯 Models
 
 | Model | Purpose | Size | Link |
 |-------|---------|------|------|
-| **Qwen3-VL** | Caption generation, Answer generation | Via Ollama | [Ollama](https://ollama.com) |
+| **Qwen3-VL** | Caption & Answer generation | Via Ollama | [Ollama](https://ollama.com) |
 | **Qwen3-VL-Embedding-2B** | Multi-modal embeddings | ~4GB | [HF](https://huggingface.co/Qwen/Qwen3-VL-Embedding-2B) |
 | **Qwen3-VL-Embedding-8B** | Higher quality embeddings | ~16GB | [HF](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B) |
 | **Qwen3-VL-Reranker-2B** | Multi-modal reranking | ~4GB | [HF](https://huggingface.co/Qwen/Qwen3-VL-Reranker-2B) |
 | **Qwen3-VL-Reranker-8B** | Higher quality reranking | ~16GB | [HF](https://huggingface.co/Qwen/Qwen3-VL-Reranker-8B) |
 
+## ⚙️ Configuration
+
+Create a `.env` file for custom configuration:
+
+```bash
+# Models
+EMBEDDING_MODEL=Qwen/Qwen3-VL-Embedding-8B
+RERANKER_MODEL=Qwen/Qwen3-VL-Reranker-8B
+
+# Ollama
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=qwen3-vl
+
+# Storage
+INDEX_DIR=./video_indexes
+CACHE_SIZE_MB=2000
+
+# Processing
+DEFAULT_FPS=1.0
+DEFAULT_TOP_K=5
+```
+
 ## 💾 Storage & Caching
 
-### FAISS Index Files
-
+### Index Files
 Processed videos are cached in `./video_indexes/`:
-
 ```
 ./video_indexes/
 ├── abc123def456.faiss    # FAISS vector index
-├── abc123def456.json     # Metadata (segments, captions, etc.)
+├── abc123def456.json     # Metadata (segments, captions)
 └── xyz789ghi012.faiss    # Another video's index
 ```
 
 ### Storage Requirements
-
 - **Per video**: ~8-15 MB per 1000 frames
 - **1-minute video @ 1 FPS**: ~500 KB - 1 MB
 - **10-minute video @ 1 FPS**: ~5-10 MB
 
 ### Cache Management
-
 In the Settings tab:
 - **View Cache Info**: See all cached videos and sizes
-- **Clear All Cache**: Delete all indexes (forces reprocessing)
-
-## ⚙️ Configuration
-
-### Model Selection
-
-**For Development/Testing** (Lower VRAM):
-```python
-VideoRAG(
-    embedding_model_path="Qwen/Qwen3-VL-Embedding-2B",
-    reranker_model_path="Qwen/Qwen3-VL-Reranker-2B"
-)
-```
-
-**For Production/Best Quality** (Higher VRAM):
-```python
-VideoRAG(
-    embedding_model_path="Qwen/Qwen3-VL-Embedding-8B",
-    reranker_model_path="Qwen/Qwen3-VL-Reranker-8B"
-)
-```
-
-### Processing Parameters
-
-- **FPS**: 0.5-2.0 (1.0 recommended)
-  - Lower = faster processing, less detail
-  - Higher = slower processing, more detail
-
-- **Use Cache**: Always on unless you want to reprocess
-
-- **Top K**: 3-10 results (5 recommended)
-
-- **Reranking**: Enable for best quality, disable for speed
-
-## 🔧 Troubleshooting
-
-### Models Not Loading
-
-```bash
-# Ensure transformers is up to date
-pip install transformers>=4.57.0 --upgrade
-
-# Check for qwen-vl-utils
-pip install qwen-vl-utils>=0.0.14
-```
-
-### Ollama Connection Error
-
-```bash
-# Check if Ollama is running
-curl http://localhost:11434/api/tags
-
-# If not, start it
-ollama serve
-
-# Verify Qwen3-VL is installed
-ollama list | grep qwen3-vl
-```
-
-### Out of Memory
-
-**Solutions:**
-1. Use smaller models (2B instead of 8B)
-2. Reduce FPS (try 0.5)
-3. Process shorter videos
-4. Close other applications
-
-### FAISS Installation Issues
-
-```bash
-# CPU version (easier to install)
-pip install faiss-cpu
-
-# GPU version (better performance)
-conda install -c conda-forge faiss-gpu
-```
-
-### Import Errors
-
-```bash
-# Make sure scripts/__init__.py exists
-touch scripts/__init__.py
-
-# Check Python path
-python -c "import sys; print(sys.path)"
-```
+- **Clear All Cache**: Delete all indexes
 
 ## 📊 Performance
 
@@ -337,56 +219,88 @@ python -c "import sys; print(sys.path)"
 | Answer generation | ~2-5 seconds |
 | **Total search time** | **~3-8 seconds** |
 
-## 🎓 Advanced Features
+## 🔧 Troubleshooting
 
-### Custom Embedding Dimensions
-
-Qwen3-VL-Embedding supports Matryoshka Representation Learning:
-
-```python
-# Use smaller dimensions for faster search
-embeddings = embedder.process(inputs, dim=1024)  # Instead of 2048
+### Models Not Loading
+```bash
+pip install transformers>=4.57.0 --upgrade
+pip install qwen-vl-utils>=0.0.14
 ```
 
-### Batch Processing Multiple Videos
+### Ollama Connection Error
+```bash
+# Check if Ollama is running
+curl http://localhost:11434/api/tags
 
-```python
-import glob
+# Start Ollama
+ollama serve
 
-video_files = glob.glob("videos/*.mp4")
-for video in video_files:
-    rag.process_video(video, fps=1.0)
-    print(f"Processed: {video}")
+# Verify model
+ollama list | grep qwen3-vl
 ```
 
-### Export Search Results
+### Out of Memory
+1. Use smaller models (2B instead of 8B)
+2. Reduce FPS (try 0.5)
+3. Process shorter videos
+4. Close other applications
 
-```python
-import json
+### FAISS Installation Issues
+```bash
+# CPU version (easier)
+pip install faiss-cpu
 
-results = rag.search_with_text("query", top_k=10)
-export_data = [{
-    'timestamp': r.timestamp,
-    'caption': r.caption,
-    'score': r.relevance_score
-} for r in results]
+# GPU version (better performance)
+conda install -c conda-forge faiss-gpu
+```
 
-with open('results.json', 'w') as f:
-    json.dump(export_data, f, indent=2)
+## 🐳 Docker Usage
+
+### Build Image
+```bash
+docker build -t videorag:latest .
+```
+
+### Run with Docker Compose
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild after code changes
+docker-compose up -d --build
+```
+
+### Run Standalone Container
+```bash
+docker run -d \
+  -p 7860:7860 \
+  -v $(pwd)/video_indexes:/app/video_indexes \
+  --gpus all \
+  --name videorag \
+  videorag:latest
 ```
 
 ## 🤝 Contributing
 
 Contributions welcome! Areas for improvement:
-- GPU-accelerated FAISS (IVF indices)
-- Video streaming support
-- Multi-video search
-- Custom reranking strategies
-- UI improvements
 
-## 📄 License
+- [ ] GPU-accelerated FAISS (IVF indices)
+- [ ] Video streaming support
+- [ ] Multi-video search
+- [ ] Custom reranking strategies
+- [ ] UI improvements
+- [ ] Batch processing API
+- [ ] Support for more video formats
 
-[Your License Here]
+## 📝 License
+
+Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
@@ -402,6 +316,14 @@ Contributions welcome! Areas for improvement:
 - [FAISS Documentation](https://github.com/facebookresearch/faiss/wiki)
 - [Ollama Documentation](https://ollama.com/docs)
 
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
+- **Email**: your.email@example.com
+
 ---
 
 **Built with ❤️ using Qwen3-VL, FAISS, and Gradio**
+
+⭐ Star this repo if you find it useful!

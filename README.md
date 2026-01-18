@@ -1,4 +1,4 @@
-![Beispielbild](pp_my_qrcode_1768774121925.jpg)
+![Beispielbild](pp_my_qrcode_1768774121925.png)
 
 
 # 🎥 SotaVideoRAG: State-of-the-Art Video Retrieval System

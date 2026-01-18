@@ -1,3 +1,6 @@
+![Beispielbild](pp_my_qrcode_1768774121925.jpg)
+
+
 # 🎥 SotaVideoRAG: State-of-the-Art Video Retrieval System
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)

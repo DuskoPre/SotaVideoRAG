@@ -732,270 +732,246 @@ class VideoRAG:
         return result
     
     def search_with_faiss(self, query_embedding: np.ndarray, top_k: int = 10) -> List[Dict]:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-"""
-VideoRAG - Search methods and Gradio UI
-Add this to the VideoRAG class and UI code
-"""
-
-# Continue VideoRAG class methods...
-
-def search_with_faiss(self, query_embedding: np.ndarray, top_k: int = 10) -> List[Dict]:
-    """
-    🔴 HIGH PRIORITY FIX: FAISS search with bounds checking
-    """
-    if self.faiss_index is None:
-        logger.warning("No FAISS index available")
-        return []
-    
-    try:
-        # Validate dimension
-        if query_embedding.shape[0] != self.embedding_dim:
-            logger.error(f"Query dimension mismatch: {query_embedding.shape[0]} != {self.embedding_dim}")
+        """
+        🔴 HIGH PRIORITY FIX: FAISS search with bounds checking
+        """
+        if self.faiss_index is None:
+            logger.warning("No FAISS index available")
             return []
         
-        query_embedding = query_embedding.astype('float32').reshape(1, -1)
-        faiss.normalize_L2(query_embedding)
+        try:
+            # Validate dimension
+            if query_embedding.shape[0] != self.embedding_dim:
+                logger.error(f"Query dimension mismatch: {query_embedding.shape[0]} != {self.embedding_dim}")
+                return []
+            
+            query_embedding = query_embedding.astype('float32').reshape(1, -1)
+            faiss.normalize_L2(query_embedding)
+            
+            # 🔴 FIX: Bounds check on top_k
+            top_k = max(1, min(top_k, self.faiss_index.ntotal))
+            
+            distances, indices = self.faiss_index.search(query_embedding, top_k)
+            
+            results = []
+            for dist, idx in zip(distances[0], indices[0]):
+                # 🔴 FIX: Validate index bounds
+                if idx < 0 or idx >= len(self.frame_to_segment_map):
+                    logger.warning(f"Invalid FAISS index {idx}, skipping")
+                    continue
+                
+                frame_info = self.frame_to_segment_map[idx]
+                seg_id = frame_info['segment_id']
+                
+                # Validate segment ID
+                if seg_id >= len(self.segments):
+                    logger.warning(f"Invalid segment ID {seg_id}, skipping")
+                    continue
+                
+                segment = self.segments[seg_id]
+                frame_idx = frame_info['frame_idx']
+                
+                # Validate frame index
+                if frame_idx >= len(segment.frames):
+                    logger.warning(f"Invalid frame index {frame_idx} for segment {seg_id}, skipping")
+                    continue
+                
+                results.append({
+                    'segment': segment,
+                    'frame_idx': frame_idx,
+                    'frame': segment.frames[frame_idx],
+                    'caption': segment.captions[frame_idx],
+                    'timestamp': frame_info['timestamp'],
+                    'similarity': float(dist)
+                })
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"FAISS search error: {e}")
+            return []
+
+    def search_with_text(self, query: str, top_k: int = 5) -> List[RetrievalResult]:
+        """Search using text query"""
+        if not query or not query.strip():
+            logger.warning("Empty query")
+            return []
         
-        # 🔴 FIX: Bounds check on top_k
-        top_k = max(1, min(top_k, self.faiss_index.ntotal))
+        if self.faiss_index is None:
+            logger.warning("No index available")
+            return []
         
-        distances, indices = self.faiss_index.search(query_embedding, top_k)
+        query_embedding = self.get_text_embedding(query)
+        faiss_results = self.search_with_faiss(query_embedding, top_k * 2)
         
         results = []
-        for dist, idx in zip(distances[0], indices[0]):
-            # 🔴 FIX: Validate index bounds
-            if idx < 0 or idx >= len(self.frame_to_segment_map):
-                logger.warning(f"Invalid FAISS index {idx}, skipping")
-                continue
-            
-            frame_info = self.frame_to_segment_map[idx]
-            seg_id = frame_info['segment_id']
-            
-            # Validate segment ID
-            if seg_id >= len(self.segments):
-                logger.warning(f"Invalid segment ID {seg_id}, skipping")
-                continue
-            
-            segment = self.segments[seg_id]
-            frame_idx = frame_info['frame_idx']
-            
-            # Validate frame index
-            if frame_idx >= len(segment.frames):
-                logger.warning(f"Invalid frame index {frame_idx} for segment {seg_id}, skipping")
-                continue
-            
-            results.append({
-                'segment': segment,
-                'frame_idx': frame_idx,
-                'frame': segment.frames[frame_idx],
-                'caption': segment.captions[frame_idx],
-                'timestamp': frame_info['timestamp'],
-                'similarity': float(dist)
-            })
-        
-        return results
-        
-    except Exception as e:
-        logger.error(f"FAISS search error: {e}")
-        return []
-
-def search_with_text(self, query: str, top_k: int = 5) -> List[RetrievalResult]:
-    """Search using text query"""
-    if not query or not query.strip():
-        logger.warning("Empty query")
-        return []
-    
-    if self.faiss_index is None:
-        logger.warning("No index available")
-        return []
-    
-    query_embedding = self.get_text_embedding(query)
-    faiss_results = self.search_with_faiss(query_embedding, top_k * 2)
-    
-    results = []
-    for res in faiss_results[:top_k]:
-        result = RetrievalResult(
-            segment=res['segment'],
-            frame_idx=res['frame_idx'],
-            relevance_score=res['similarity'],
-            frame=res['frame'],
-            caption=res['caption'],
-            timestamp=res['timestamp']
-        )
-        results.append(result)
-    
-    return results
-
-def search_with_image(self, image: Image.Image, top_k: int = 5) -> List[RetrievalResult]:
-    """Search using uploaded image"""
-    if image is None:
-        logger.warning("No image provided")
-        return []
-    
-    if self.faiss_index is None:
-        logger.warning("No index available")
-        return []
-    
-    image_embedding = self.get_image_embedding(image)
-    faiss_results = self.search_with_faiss(image_embedding, top_k * 2)
-    
-    results = []
-    for res in faiss_results[:top_k]:
-        result = RetrievalResult(
-            segment=res['segment'],
-            frame_idx=res['frame_idx'],
-            relevance_score=res['similarity'],
-            frame=res['frame'],
-            caption=res['caption'],
-            timestamp=res['timestamp']
-        )
-        results.append(result)
-    
-    return results
-
-def rerank_results(self, query: str, results: List[RetrievalResult], query_image: Image.Image = None) -> List[RetrievalResult]:
-    """Rerank results using Qwen3-VL-Reranker"""
-    if not results:
-        return results
-    
-    try:
-        documents = []
-        for result in results:
-            # 🟢 FIX: Explicitly convert to PIL Image
-            frame_rgb = cv2.cvtColor(result.frame, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(frame_rgb)
-            
-            doc_text = f"Frame: {result.caption}. Context: {result.segment.segment_summary}"
-            documents.append({"image": pil_image, "text": doc_text})
-        
-        query_dict = {"text": query}
-        if query_image:
-            query_dict["image"] = query_image
-        
-        rerank_input = {
-            "instruction": "Retrieve the most relevant video frame for the query",
-            "query": query_dict,
-            "documents": documents
-        }
-        
-        scores = self.reranker.process(rerank_input)
-        
-        # Combine scores
-        for i, score in enumerate(scores):
-            if i < len(results):
-                original_score = results[i].relevance_score
-                results[i].relevance_score = 0.3 * original_score + 0.7 * score
-        
-        return sorted(results, key=lambda x: x.relevance_score, reverse=True)
-        
-    except Exception as e:
-        logger.error(f"Reranking error: {e}")
-        return results
-
-@retry_on_failure(max_retries=2, delay=1.0)
-def generate_answer(self, query: str, results: List[RetrievalResult]) -> str:
-    """Generate answer using Ollama"""
-    if not results:
-        return "No relevant frames found to answer your question."
-    
-    try:
-        context_parts = []
-        for i, result in enumerate(results[:3], 1):
-            context_parts.append(
-                f"{i}. [{result.timestamp:.1f}s] {result.caption}"
+        for res in faiss_results[:top_k]:
+            result = RetrievalResult(
+                segment=res['segment'],
+                frame_idx=res['frame_idx'],
+                relevance_score=res['similarity'],
+                frame=res['frame'],
+                caption=res['caption'],
+                timestamp=res['timestamp']
             )
+            results.append(result)
         
-        context = "\n".join(context_parts)
-        
-        prompt = f"""Based on these video frames, answer the question concisely:
+        return results
 
-{context}
-
-Question: {query}
-
-Answer:"""
+    def search_with_image(self, image: Image.Image, top_k: int = 5) -> List[RetrievalResult]:
+        """Search using uploaded image"""
+        if image is None:
+            logger.warning("No image provided")
+            return []
         
-        response = requests.post(
-            f"{self.ollama_url}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=60
-        )
+        if self.faiss_index is None:
+            logger.warning("No index available")
+            return []
         
-        if response.status_code == 200:
-            return response.json()["response"]
-        else:
-            return f"Error: Ollama returned status {response.status_code}"
+        image_embedding = self.get_image_embedding(image)
+        faiss_results = self.search_with_faiss(image_embedding, top_k * 2)
+        
+        results = []
+        for res in faiss_results[:top_k]:
+            result = RetrievalResult(
+                segment=res['segment'],
+                frame_idx=res['frame_idx'],
+                relevance_score=res['similarity'],
+                frame=res['frame'],
+                caption=res['caption'],
+                timestamp=res['timestamp']
+            )
+            results.append(result)
+        
+        return results
+
+    def rerank_results(self, query: str, results: List[RetrievalResult], query_image: Image.Image = None) -> List[RetrievalResult]:
+        """Rerank results using Qwen3-VL-Reranker"""
+        if not results:
+            return results
+        
+        try:
+            documents = []
+            for result in results:
+                # 🟢 FIX: Explicitly convert to PIL Image
+                frame_rgb = cv2.cvtColor(result.frame, cv2.COLOR_BGR2RGB)
+                pil_image = Image.fromarray(frame_rgb)
+                
+                doc_text = f"Frame: {result.caption}. Context: {result.segment.segment_summary}"
+                documents.append({"image": pil_image, "text": doc_text})
             
-    except Exception as e:
-        logger.error(f"Answer generation error: {e}")
-        return f"Error generating answer: {str(e)}"
+            query_dict = {"text": query}
+            if query_image:
+                query_dict["image"] = query_image
+            
+            rerank_input = {
+                "instruction": "Retrieve the most relevant video frame for the query",
+                "query": query_dict,
+                "documents": documents
+            }
+            
+            scores = self.reranker.process(rerank_input)
+            
+            # Combine scores
+            for i, score in enumerate(scores):
+                if i < len(results):
+                    original_score = results[i].relevance_score
+                    results[i].relevance_score = 0.3 * original_score + 0.7 * score
+            
+            return sorted(results, key=lambda x: x.relevance_score, reverse=True)
+            
+        except Exception as e:
+            logger.error(f"Reranking error: {e}")
+            return results
 
-def get_cache_info(self) -> str:
-    """Get cache statistics"""
-    if not self.index_dir.exists():
-        return "No cache directory found"
-    
-    index_files = list(self.index_dir.glob("*.faiss"))
-    if not index_files:
-        return "No cached videos found"
-    
-    total_size = sum(f.stat().st_size for f in index_files) / (1024 * 1024)
-    info = [
-        f"📊 Cache Statistics",
-        f"",
-        f"Cached videos: {len(index_files)}",
-        f"Total size: {total_size:.2f} MB",
-        f"Location: {self.index_dir}",
-        f"",
-        f"Details:"
-    ]
-    
-    for idx_file in sorted(index_files):
-        json_file = idx_file.with_suffix('.json')
-        if json_file.exists():
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-                num_segments = len(data.get('segments', []))
-                num_vectors = len(data.get('frame_to_segment_map', []))
-                size_mb = (idx_file.stat().st_size + json_file.stat().st_size) / (1024 * 1024)
-                info.append(f"• {idx_file.stem[:16]}...: {num_segments} segments, {num_vectors} vectors, {size_mb:.2f} MB")
-            except:
-                pass
-    
-    return "\n".join(info)
+    @retry_on_failure(max_retries=2, delay=1.0)
+    def generate_answer(self, query: str, results: List[RetrievalResult]) -> str:
+        """Generate answer using Ollama"""
+        if not results:
+            return "No relevant frames found to answer your question."
+        
+        try:
+            context_parts = []
+            for i, result in enumerate(results[:3], 1):
+                context_parts.append(
+                    f"{i}. [{result.timestamp:.1f}s] {result.caption}"
+                )
+            
+            context = "\n".join(context_parts)
+            
+            prompt = f"""Based on these video frames, answer the question concisely:
 
-def clear_cache(self) -> str:
-    """Clear all cached indexes"""
-    try:
-        deleted = 0
-        for file in self.index_dir.glob("*"):
-            file.unlink()
-            deleted += 1
-        return f"✓ Cleared {deleted} cache files"
-    except Exception as e:
-        logger.error(f"Error clearing cache: {e}")
-        return f"❌ Error: {e}"
+    {context}
+
+    Question: {query}
+
+    Answer:"""
+            
+            response = requests.post(
+                f"{self.ollama_url}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False
+                },
+                timeout=60
+            )
+            
+            if response.status_code == 200:
+                return response.json()["response"]
+            else:
+                return f"Error: Ollama returned status {response.status_code}"
+                
+        except Exception as e:
+            logger.error(f"Answer generation error: {e}")
+            return f"Error generating answer: {str(e)}"
+
+    def get_cache_info(self) -> str:
+        """Get cache statistics"""
+        if not self.index_dir.exists():
+            return "No cache directory found"
+        
+        index_files = list(self.index_dir.glob("*.faiss"))
+        if not index_files:
+            return "No cached videos found"
+        
+        total_size = sum(f.stat().st_size for f in index_files) / (1024 * 1024)
+        info = [
+            f"📊 Cache Statistics",
+            f"",
+            f"Cached videos: {len(index_files)}",
+            f"Total size: {total_size:.2f} MB",
+            f"Location: {self.index_dir}",
+            f"",
+            f"Details:"
+        ]
+        
+        for idx_file in sorted(index_files):
+            json_file = idx_file.with_suffix('.json')
+            if json_file.exists():
+                try:
+                    with open(json_file) as f:
+                        data = json.load(f)
+                    num_segments = len(data.get('segments', []))
+                    num_vectors = len(data.get('frame_to_segment_map', []))
+                    size_mb = (idx_file.stat().st_size + json_file.stat().st_size) / (1024 * 1024)
+                    info.append(f"• {idx_file.stem[:16]}...: {num_segments} segments, {num_vectors} vectors, {size_mb:.2f} MB")
+                except:
+                    pass
+        
+        return "\n".join(info)
+
+    def clear_cache(self) -> str:
+        """Clear all cached indexes"""
+        try:
+            deleted = 0
+            for file in self.index_dir.glob("*"):
+                file.unlink()
+                deleted += 1
+            return f"✓ Cleared {deleted} cache files"
+        except Exception as e:
+            logger.error(f"Error clearing cache: {e}")
+            return f"❌ Error: {e}"
 
 # ============================================================================
 # GRADIO UI
